@@ -1,1 +1,2565 @@
+=================================================
 
+package com.abu.cxf.controller;
+
+import com.abu.cxf.dao.CxfDao;
+import com.abu.cxf.model.CategoryDto;
+import com.abu.cxf.model.InputDto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import javax.servlet.http.HttpSession;
+//import javax.validation.Valid;
+import java.util.*;
+
+@Controller
+public class FirstScreenController {
+    @Autowired
+    CxfDao cxfDao;
+
+    @GetMapping("/cxfmenu")
+    public String showForm(Model model) {
+        InputDto inputDto = new InputDto();
+        model.addAttribute("inputDto", inputDto);
+
+//        List<String> listRegion = Arrays.asList("GSSUNIT", "GSSSYST", "GSSETST", "GSSDSIT", "GSSCREM"
+//                , "GSSE2E", "GSSCFP", "GSSCFP2", "GSSCFP3", "GSSCFP4", "GSSTEST");
+        List<String> listRegion = Arrays.asList("GSSPROD");
+        model.addAttribute("listRegion", listRegion);
+
+        List<String> listofBICS = new ArrayList<>();
+        List<String> listQual = new ArrayList<>();
+        return "menu_form";
+    }
+
+    @PostMapping("/cxfmenu")
+    public String showForm(@ModelAttribute("inputDto") InputDto inputDto, Model model) {
+//        if (inputDto.getDelivaryGroup() == null || inputDto.getDelivaryGroup().equals("")) {
+        if (inputDto.getDelivaryGroup().equals("")) {
+            List<Map<String, Object>> listMap = cxfDao.getUniqueBICS(inputDto);
+            List<String> listofBICS = new ArrayList<String>();
+            for (Map<String, Object> m : listMap) {
+                for (Map.Entry<String, Object> e : m.entrySet()) {
+                    listofBICS.add((String) e.getValue());
+                }
+            }
+            model.addAttribute("listofBICS", listofBICS);
+//            System.out.println("list of bics : " + listofBICS);
+        }
+        List<String> listRegion = Collections.singletonList(inputDto.getRegion());
+        model.addAttribute("listRegion", listRegion);
+
+//        if (inputDto.getRegion() == null && inputDto.getDelivaryGroup().equals("")) {
+//            List<Map<String, Object>> listQuals = cxfDao.getQualbyBic(inputDto);
+//            List<String> listQual = new ArrayList<String>();
+////            listQual.add("--ALL--");
+//            for (Map<String, Object> m : listQuals) {
+//                for (Map.Entry<String, Object> e : m.entrySet()) {
+//                    listQual.add((String) e.getValue());
+//                }
+//            }
+//            model.addAttribute("listQual", listQual);
+//            List<String> listofBICS = Collections.singletonList(inputDto.getDelivaryGroup());
+//            model.addAttribute("listofBICS", listofBICS);
+//        }
+
+        if (!inputDto.getDelivaryGroup().equals("") && inputDto.getRegion() != null) {
+//            System.out.println("before call->" + inputDto.getRegion());
+            String inRegion = inputDto.getRegion();
+            String inDelv = inputDto.getDelivaryGroup();
+            String inmsgtype = inputDto.getMsgtype();
+//            System.out.println("msgtype" + inmsgtype);
+
+            model.addAttribute("inputDtos", cxfDao.getmainRow(inputDto));
+            inputDto.setRegion(inRegion);
+            inputDto.setDelivaryGroup(inDelv);
+            model.addAttribute("inputDto", inputDto);
+//            System.out.println("abu" + cxfDao.getmainRow(inputDto));
+//            List<String> listofBICS = Collections.singletonList(inputDto.getDelivaryGroup());
+//            model.addAttribute("listofBICS", listofBICS);
+            List<Map<String, Object>> listMap = cxfDao.getUniqueBICS(inputDto);
+            List<String> listofBICS = new ArrayList<String>();
+            for (Map<String, Object> m : listMap) {
+                for (Map.Entry<String, Object> e : m.entrySet()) {
+                    listofBICS.add((String) e.getValue());
+                }
+            }
+            model.addAttribute("listofBICS", listofBICS);
+        }
+        return "menu_form";
+    }
+
+    @GetMapping("/cxf/view/{cr1Number}/{region}")
+    public String getAllRows(@PathVariable int cr1Number, @PathVariable String region,
+                             @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+//        System.out.println(cr1Number);
+//        System.out.println(region);
+//        System.out.println(cxfDao.getBicQualRows(cr1Number));
+
+        model.addAttribute("inputDtos", cxfDao.getBicQualRows(cr1Number, region));
+        inputDto.setRegion(region);
+        model.addAttribute("inputDto", inputDto);
+        return "view-cxf-setup";
+    }
+
+    //    http://localhost:8080/cxf/update/GSSUNIT/14479/29707
+
+    @GetMapping("/cxf/update/{region}/{cr1Number}/{cd1Number}")
+    public String cxfUpdateForm(@PathVariable String region, @PathVariable int cr1Number, @PathVariable int cd1Number,
+                                @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+//        System.out.println("inside update-->" + "cr1Number : " + cr1Number + "cd1Number : " + cd1Number+region);
+
+        model.addAttribute("ViewUpdateDto", cxfDao.getBicQualRow(region, cr1Number, cd1Number));
+//        inputDto.setRegion(region);
+
+        return "update-cxf-setup";
+    }
+
+    @PostMapping("/cxf/update/{region}/{cr1Number}/{cd1Number}")
+    public String cxfUpdateForms(@PathVariable String region, @PathVariable int cr1Number, @PathVariable int cd1Number,
+                                 @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+//        System.out.println("inside update-->" + "cr1Number : " + cr1Number + "cd1Number : " + cd1Number);
+//        System.out.println("inputDto-->" +inputDto);
+        int n = cxfDao.updateSetup(inputDto);
+        System.out.println("rows updated : " + n);
+        model.addAttribute("inputDto", inputDto);
+
+        return "update-cxf-setup";
+
+    }
+
+    @GetMapping("/cxf/secacct/{region}/{cr1Number}")
+    public String getAllSecAccts(@PathVariable int cr1Number, @PathVariable String region,
+                                 @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+        System.out.println(cr1Number);
+        System.out.println(region);
+        System.out.println(cxfDao.getSecAccts(cr1Number, region));
+
+        List<InputDto> list1 = cxfDao.getSecAccts(cr1Number, region);
+
+        List<InputDto> list2 = cxfDao.getSecAcctsPos(cr1Number, region);
+
+        List<InputDto> concatenated_list
+                = new ArrayList<InputDto>();
+
+        concatenated_list.addAll(list1);
+        concatenated_list.addAll(list2);
+
+        model.addAttribute("inputDtos", concatenated_list);
+
+//        if (list1.isEmpty()) {
+//            model.addAttribute("inputDtos", cxfDao.getSecAcctsPos(cr1Number, region));
+//        } else {
+//            model.addAttribute("inputDtos", cxfDao.getSecAccts(cr1Number, region));
+//        }
+
+
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "sec-acts-view";
+    }
+
+    @GetMapping("/cxf/cashacct/{region}/{cr1Number}")
+    public String getCashAccts(@PathVariable int cr1Number, @PathVariable String region,
+                               @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+        System.out.println(cr1Number);
+        System.out.println(region);
+        System.out.println(cxfDao.getCashAcct(cr1Number, region));
+
+        model.addAttribute("inputDtos", cxfDao.getCashAcct(cr1Number, region));
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "cash-act-view";
+    }
+
+    @GetMapping("/cxf/schedule/{region}/{cd1Number}/{cr1Number}")
+    public String getSchedules(@PathVariable int cd1Number, @PathVariable String region,
+                               @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+        System.out.println(cd1Number);
+        System.out.println(region);
+//        System.out.println(cxfDao.getSchedule(cd1Number, region));
+//
+
+        model.addAttribute("inputDtos", cxfDao.getSchedule(cd1Number, region));
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "schedule-view";
+    }
+
+    @GetMapping("/cxf/destination/{region}/{cd1Number}/{cr1Number}")
+    public String getDestination(@PathVariable int cd1Number, @PathVariable String region,
+                                 @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+        System.out.println(cd1Number);
+        System.out.println(region);
+//        System.out.println(cxfDao.getSchedule(cd1Number, region));
+//
+
+        model.addAttribute("destinationDtos", cxfDao.getDestination(cd1Number, region));
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "destination-view";
+    }
+
+    @GetMapping("/cxf/category/{region}/{cd1Number}/{cr1Number}")
+    public String getCategory(@PathVariable int cd1Number, @PathVariable String region,
+                              @ModelAttribute("CategoryDto") CategoryDto categoryDto, Model model) {
+        System.out.println(cd1Number);
+        System.out.println(region);
+//        System.out.println(cxfDao.getSchedule(cd1Number, region));
+//
+
+        model.addAttribute("CategoryDtos", cxfDao.getCategory(cd1Number, region));
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "category-view";
+    }
+
+    @GetMapping("/cxf/details/{region}/{cr1Number}/{cd1Number}")
+    public String getDetails(@PathVariable int cd1Number, @PathVariable String region, @PathVariable int cr1Number,
+                             @ModelAttribute("inputDto") InputDto inputDto, Model model) {
+        System.out.println(cd1Number);
+        System.out.println(cr1Number);
+        System.out.println(region);
+//        System.out.println(cxfDao.getSchedule(cd1Number, region));
+//
+
+        model.addAttribute("inputDtos", cxfDao.getOptDetail(cr1Number, cd1Number, region));
+        System.out.println("Abubakar- test" + cxfDao.getOptDetail(cr1Number, cd1Number, region));
+
+//        inputDto.setRegion(region);
+//        model.addAttribute("inputDto", inputDto);
+//        return  cxfDao.getSecAccts(cr1Number, region);
+        return "detail-view";
+    }
+
+    @GetMapping("/cxfbyACT")
+    public String showActForm(Model model) {
+        InputDto inputDto = new InputDto();
+        model.addAttribute("inputDto", inputDto);
+
+//        List<String> listRegion = Arrays.asList("GSSUNIT", "GSSSYST", "GSSETST", "GSSDSIT", "GSSCREM"
+//                , "GSSE2E", "GSSCFP", "GSSCFP2", "GSSCFP3", "GSSCFP4", "GSSTEST");
+        List<String> listRegion = Arrays.asList("GSSPROD");
+        model.addAttribute("listRegion", listRegion);
+
+        List<String> listofBICS = new ArrayList<>();
+        List<String> listQual = new ArrayList<>();
+        return "Enq-sec-act";
+    }
+
+    @PostMapping("/cxfbyACT")
+    public String showActForm(@ModelAttribute("inputDto") InputDto inputDto,
+                              BindingResult result, Model model,
+                              RedirectAttributes attr, HttpSession session) {
+//        System.out.println(inputDto.getAccount());
+//        System.out.println(inputDto.getRegion());
+//        if (result.hasErrors()) {
+//            List<String> listRegion = Arrays.asList("GSSPROD");
+//            model.addAttribute("listRegion", listRegion);
+//
+//            List<String> listofBICS = new ArrayList<>();
+//            List<String> listQual = new ArrayList<>();
+//            return "Enq-sec-act";
+//        }
+        if (inputDto.getAccount().isEmpty()) {
+//            List<String> listRegion = Arrays.asList("GSSUNIT", "GSSSYST", "GSSETST", "GSSDSIT", "GSSCREM"
+//                    , "GSSE2E", "GSSCFP", "GSSCFP2", "GSSCFP3", "GSSCFP4", "GSSTEST");
+            List<String> listRegion = Arrays.asList("GSSPROD");
+            model.addAttribute("listRegion", listRegion);
+
+            List<String> listofBICS = new ArrayList<>();
+            List<String> listQual = new ArrayList<>();
+            return "Enq-sec-act";
+        } else {
+            List<String> listRegion = Collections.singletonList(inputDto.getRegion());
+            model.addAttribute("listRegion", listRegion);
+
+            if (inputDto.getAccount() != null && inputDto.getRegion() != null) {
+//            System.out.println("before call->" + inputDto.getRegion());
+                String inRegion = inputDto.getRegion();
+                String inAccount = inputDto.getAccount();
+                String inMSGTYPE = inputDto.getMsgtype();
+                model.addAttribute("inputDtos", cxfDao.getmainRowAct(inputDto));
+                inputDto.setRegion(inRegion);
+                inputDto.setAccount(inAccount);
+                model.addAttribute("inputDto", inputDto);
+//            System.out.println("abu" + cxfDao.getmainRow(inputDto));
+                return "Enq-sec-act";
+            }
+        }
+        return "Enq-sec-act";
+    }
+
+
+    @GetMapping("/cxfbyCashACT")
+    public String showCashActForm(Model model) {
+        InputDto inputDto = new InputDto();
+        model.addAttribute("inputDto", inputDto);
+
+//        List<String> listRegion = Arrays.asList("GSSUNIT", "GSSSYST", "GSSETST", "GSSDSIT", "GSSCREM"
+//                , "GSSE2E", "GSSCFP", "GSSCFP2", "GSSCFP3", "GSSCFP4", "GSSTEST");
+        List<String> listRegion = Arrays.asList("GSSPROD");
+        model.addAttribute("listRegion", listRegion);
+
+        List<String> listofBICS = new ArrayList<>();
+        List<String> listQual = new ArrayList<>();
+        return "Enq-cac-act";
+    }
+
+    @PostMapping("/cxfbyCashACT")
+    public String showCashActForm(@ModelAttribute("inputDto") InputDto inputDto, Model model,
+                                  BindingResult result,
+                                  RedirectAttributes attr, HttpSession session) {
+        System.out.println(inputDto.getCashAccount());
+        System.out.println(inputDto.getRegion());
+//        if (result.hasErrors()) {
+//            List<String> listRegion = Arrays.asList("GSSPROD");
+//            model.addAttribute("listRegion", listRegion);
+//            return "Enq-cac-act";
+//        }
+
+        List<String> listRegion = Collections.singletonList(inputDto.getRegion());
+        model.addAttribute("listRegion", listRegion);
+
+        if (inputDto.getCashAccount() != null && inputDto.getRegion() != null) {
+            System.out.println("before call->" + inputDto.getRegion());
+            String inRegion = inputDto.getRegion();
+            String inCashAccount = inputDto.getCashAccount();
+            model.addAttribute("inputDtos", cxfDao.getmainRowCashAct(inputDto));
+            inputDto.setRegion(inRegion);
+            inputDto.setCashAccount(inCashAccount);
+            model.addAttribute("inputDto", inputDto);
+//            System.out.println("abu" + cxfDao.getmainRow(inputDto));
+        }
+        return "Enq-cac-act";
+    }
+}
+=================================================
+package com.abu.cxf.dao;
+
+import com.abu.cxf.model.CategoryDto;
+import com.abu.cxf.model.DestinationDto;
+import com.abu.cxf.model.InputDto;
+import com.abu.cxf.model.ViewUpdateDto;
+import java.util.List;
+import java.util.Map;
+
+public interface CxfDao {
+
+    List<Map<String, Object>> getUniqueBICS(InputDto inputDto);
+
+    List<Map<String, Object>> getQualbyBic(InputDto inputDto);
+
+    List<Map<String, Object>> getSwiftRow(InputDto inputDto);
+
+    List<InputDto> getmainRow(InputDto inputDto);
+
+    List<InputDto> getmainRowAct(InputDto inputDto);
+
+    List<InputDto> getmainRowCashAct(InputDto inputDto);
+
+    List<InputDto> getBicQualRows(int cr1Number, String region);
+
+    ViewUpdateDto getBicQualRow(String region, int cr1Number, int cd1Number);
+
+
+    List<InputDto> getSecAccts(int cr1Number, String region);
+    List<InputDto> getSecAcctsPos(int cr1Number, String region);
+
+    List<InputDto> getCashAcct(int cr1Number, String region);
+
+    List<InputDto> getSchedule(int cd1Number, String region);
+
+    List<CategoryDto> getCategory(int cd1Number, String region);
+
+    List<DestinationDto> getDestination(int cd1Number, String region);
+
+    List<InputDto> getOptDetail(int cr1Number, int cd1Number, String region);
+
+    int updateSetup(InputDto inputDto);
+}
+=================================================
+package com.abu.cxf.dao;
+
+import com.abu.cxf.model.CategoryDto;
+import com.abu.cxf.model.DestinationDto;
+import com.abu.cxf.model.InputDto;
+import com.abu.cxf.model.ViewUpdateDto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
+import javax.swing.text.View;
+import java.util.List;
+import java.util.Map;
+
+@Component("dao")
+public class CxfDAOImplementation implements CxfDao {
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @Override
+    public List<Map<String, Object>> getUniqueBICS
+            (InputDto inputDto) {
+
+        String region = inputDto.getRegion().trim();
+        String sql = "";
+
+        sql = "SELECT DISTINCT(CR1_BUS_ID) FROM " + region +
+                ".CLIENT_RPTG_GROUP1  \n" +
+                "WITH UR;";
+//        System.out.println("Unique Bics : " + sql);
+        return jdbcTemplate.queryForList(sql);
+    }
+
+    @Override
+    public List<Map<String, Object>> getQualbyBic(InputDto inputDto) {
+        String region = inputDto.getRegion().trim();
+        String delivaryGroup = inputDto.getDelivaryGroup().trim();
+//        String msgType = inputDto.msgtype.trim();
+        String sql = "";
+        sql = "SELECT CR1_BUS_QLFY_ID FROM " + region +
+                ".CLIENT_RPTG_GROUP1 WHERE CR1_BUS_ID = '" + delivaryGroup +
+                "' WITH UR;";
+        System.out.println(" Bic+Qual : " + sql);
+        return jdbcTemplate.queryForList(sql);
+    }
+
+    @Override
+    public List<Map<String, Object>> getSwiftRow(InputDto inputDto) {
+        String region = inputDto.getRegion().trim();
+        String delivaryGroup = inputDto.getDelivaryGroup().trim();
+        String qulaf = inputDto.getQualifier().trim();
+        String sql = "";
+        sql = "select \n" +
+                "SMG_TY_CD1\n" +
+                ",PRF_CD_CD1\n" +
+                ",SMV_CD_CD1\n" +
+                ",CD1_EFF_DT\n" +
+                ",CD1_EXP_DT\n" +
+                ",CD1_TEST_IN\n" +
+                ",CD1_EVENT_DRIVE_IN\n" +
+                ",CD1_NO\n" +
+                ",CR1_NO_CD1 \n" +
+                "FROM " + region + ".CDV_EXTRACT1 where CR1_NO_CD1   IN( SELECT CR1_NO FROM " + region +
+                ".CLIENT_RPTG_GROUP1 \n" +
+                "\t\t\t\tWHERE  CR1_BUS_ID = '" + delivaryGroup +
+                "'\t\t\t\t AND CR1_BUS_QLFY_ID = '" + qulaf + "'\t\t\t\t\t) WITH UR;";
+//        System.out.println("sql-3" + sql);
+        return jdbcTemplate.queryForList(sql);
+    }
+
+    @Override
+    public List<InputDto> getmainRow(InputDto inputDto) {
+        String region = inputDto.getRegion().trim();
+        String delivaryGroup = inputDto.getDelivaryGroup().trim();
+        String msgType = inputDto.getMsgtype().trim().toUpperCase();
+        String prodCode = inputDto.getProdCode().trim().toUpperCase();
+        String sql = "";
+//        sql = "SELECT CR1_BUS_ID" +
+//                ",CR1_BUS_QLFY_ID\n" +
+//                ",CR1_DE\n" +
+//                ",CR1_NO\n" +
+//                "FROM " + region + ".CLIENT_RPTG_GROUP1\n" +
+//                "WHERE  CR1_BUS_ID    =  '" + delivaryGroup + "' WITH UR";
+        sql = "SELECT DISTINCT CR1_BUS_ID ,CR1_BUS_QLFY_ID ,CR1_DE, CR1_NO\n FROM " + region +
+                ".CLIENT_RPTG_GROUP1 A\n " +
+                "," + region + ".CDV_EXTRACT1\t\t\tB \t\n" +
+                "WHERE A.CR1_NO = B.CR1_NO_CD1 \n" +
+                "AND A.CR1_BUS_ID = '" + delivaryGroup + "' ";
+
+        if (msgType != null && !msgType.equals("")) {
+            sql = sql + "  AND B.SMG_TY_CD1 LIKE '" + msgType + "%'";
+        }
+        if (prodCode != null && !prodCode.equals("")) {
+            sql = sql + "  AND B.PRF_CD_CD1 LIKE '" + prodCode + "%'";
+        }
+        sql = sql + " WITH UR";
+
+        System.out.println("sql abu2->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("CR1_BUS_ID"),
+                                rs.getString("CR1_BUS_QLFY_ID"),
+                                rs.getString("CR1_DE"),
+                                rs.getInt("CR1_NO")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getmainRowAct(InputDto inputDto) {
+        String region = inputDto.getRegion().trim();
+        String account = inputDto.getAccount().trim();
+        String msgType = inputDto.getMsgtype().trim().toUpperCase();
+        String prodCode = inputDto.getProdCode().trim().toUpperCase();
+
+        String sql = "";
+
+        sql = "SELECT DISTINCT D.CR1_BUS_ID\n" +
+                ",CR1_BUS_QLFY_ID\n" +
+                ",DDE_LINE1_NM  \n" +
+                ",CR1_NO_CS1\n" +
+                "from " + region + ".DLV_DEST_EXT_LINK1 A\n" +
+                ", " + region + ".CDV_EXTRACT1\t\t\tB \t\n" +
+                ", " + region + ".CRG_SEC_ACCOUNT1\t\tC\n" +
+                ", " + region + ".CLIENT_RPTG_GROUP1 \tD\n" +
+                ", " + region + ".DLV_DESTINATION\n" +
+                "WHERE A.CD1_NO_DL1 = B.CD1_NO\n" +
+                "  AND C.CR1_NO_CS1 = B.CR1_NO_CD1\n" +
+                "  AND D.CR1_NO \t   = C.CR1_NO_CS1 \n" +
+                "  AND DDE_ID \t   = D.CR1_BUS_ID\n" +
+                "  AND ACC_NO_CS1  =  '" + account + "' \n";
+
+        if (msgType != null && !msgType.equals("")) {
+            sql = sql + " AND B.SMG_TY_CD1 LIKE '" + msgType + "%'";
+        }
+        if (prodCode != null && !prodCode.equals("")) {
+            sql = sql + "  AND B.PRF_CD_CD1 LIKE '" + prodCode + "%'";
+        }
+        sql = sql + " WITH UR";
+
+        System.out.println("sql act1111->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("CR1_BUS_ID"),
+                                rs.getString("CR1_BUS_QLFY_ID"),
+                                rs.getString("DDE_LINE1_NM"),
+                                rs.getInt("CR1_NO_CS1")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getmainRowCashAct(InputDto inputDto) {
+        String region = inputDto.getRegion().trim();
+        String cashAccount = inputDto.getCashAccount().trim();
+        String msgType = inputDto.getMsgtype().trim().toUpperCase();
+        String prodCode = inputDto.getProdCode().trim().toUpperCase();
+        String sql = "";
+
+        sql = "SELECT DISTINCT D.CR1_BUS_ID\n" +
+                ",CR1_BUS_QLFY_ID\n" +
+                ",DDE_LINE1_NM  \n" +
+                ",CR1_NO_CA1\n" +
+                "from " + region + ".DLV_DEST_EXT_LINK1 A\n" +
+                ", " + region + ".CDV_EXTRACT1\t\t\tB \t\n" +
+                ", " + region + ".CRG_CASH_ACCOUNT1\t\tC\n" +
+                ", " + region + ".CLIENT_RPTG_GROUP1 \tD\n" +
+                ", " + region + ".DLV_DESTINATION\n" +
+                "WHERE A.CD1_NO_DL1 = B.CD1_NO\n" +
+                "  AND C.CR1_NO_CA1 = B.CR1_NO_CD1\n" +
+                "  AND D.CR1_NO \t   = C.CR1_NO_CA1 \n" +
+                "  AND DDE_ID \t   = D.CR1_BUS_ID\n" +
+                "  AND CAC_NO_CA1  =  '" + cashAccount + "'";
+        if (msgType != null && !msgType.equals("")) {
+            sql = sql + " AND B.SMG_TY_CD1 LIKE '" + msgType + "%'";
+        }
+        if (prodCode != null && !prodCode.equals("")) {
+            sql = sql + "  AND B.PRF_CD_CD1 LIKE '" + prodCode + "%'";
+        }
+        sql = sql + " WITH UR";
+
+        System.out.println("sql act222->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("CR1_BUS_ID"),
+                                rs.getString("CR1_BUS_QLFY_ID"),
+                                rs.getString("DDE_LINE1_NM"),
+                                rs.getInt("CR1_NO_CA1")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getBicQualRows(int cr1Number, String region) {
+        String sql = "";
+        sql = "SELECT \n" +
+                " SMG_TY_CD1\n" +
+                ",CD1_FORMAT_CD\n" +
+                ",PRF_CD_CD1\n" +
+                ",SMV_CD_CD1\n" +
+                ",CD1_EFF_DT\n" +
+                ",CD1_EXP_DT\n" +
+                ",CD1_BROKER_PRES_CD\n" +
+                ",CD1_SEC_PRES_CD\n" +
+                ",CD1_TEST_IN\n" +
+                ",CD1_EVENT_DRIVE_IN\n" +
+                ",CD1_NO\n" +
+                ",CR1_NO_CD1\n" +
+                ",'" + region + "' as region " +
+                ",CD1_ACCT_XREF_CD\n" +
+                "FROM " + region + ".CDV_EXTRACT1\n" +
+                "WHERE CR1_NO_CD1 = " + cr1Number +
+                " WITH UR";
+//        System.out.println("sql abu1->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("SMG_TY_CD1"),
+                                rs.getString("CD1_FORMAT_CD"),
+                                rs.getString("PRF_CD_CD1"),
+                                rs.getString("SMV_CD_CD1"),
+                                rs.getDate("CD1_EFF_DT"),
+                                rs.getDate("CD1_EXP_DT"),
+                                rs.getString("CD1_BROKER_PRES_CD"),
+                                rs.getString("CD1_SEC_PRES_CD"),
+                                rs.getString("CD1_TEST_IN"),
+                                rs.getString("CD1_EVENT_DRIVE_IN"),
+                                rs.getInt("CD1_NO"),
+                                rs.getInt("CR1_NO_CD1"),
+                                rs.getString("region"),
+                                rs.getString("CD1_ACCT_XREF_CD")
+                        ));
+    }
+
+    @Override
+    public ViewUpdateDto getBicQualRow(String region, int cr1Number, int cd1Number) {
+        String sql = "";
+        sql = "SELECT \n" +
+                " SMG_TY_CD1\n" +
+                ",CD1_FORMAT_CD\n" +
+                ",PRF_CD_CD1\n" +
+                ",SMV_CD_CD1\n" +
+                ",CD1_EFF_DT\n" +
+                ",CD1_EXP_DT\n" +
+                ",CD1_BROKER_PRES_CD\n" +
+                ",CD1_SEC_PRES_CD\n" +
+                ",CD1_TEST_IN\n" +
+                ",CD1_EVENT_DRIVE_IN\n" +
+                ",CD1_NO\n" +
+                ",CR1_NO_CD1\n" +
+                ",'" + region + "' as region " +
+                ",CD1_CONTINGENCY_IN\n" +
+                ",CD1_SEND_CD\n" +
+                ",CD1_CASH_SUPP_IN\t\n" +
+                ",CD1_INCR_IN       \n" +
+                ",CD1_ACCTG_BASIS_CD " +
+                ",CD1_PROJECTION_DS " +
+                ",CDS_ID_CD1 " +
+                ",CD1_HOLD_SUPP_IN " +
+                ",CD1_ACCT_XREF_CD " +
+                "FROM " + region + ".CDV_EXTRACT1\n" +
+                "WHERE CR1_NO_CD1 = " + cr1Number +
+                " AND CD1_NO =  " + cd1Number +
+                " WITH UR";
+        System.out.println("sql view/update sql->" + sql);
+        return jdbcTemplate.queryForObject(
+                sql,
+                (rs, rowNum) ->
+                        new ViewUpdateDto(
+                                rs.getString("SMG_TY_CD1").substring(0, 6).trim(),
+                                rs.getString("CD1_FORMAT_CD").trim(),
+                                rs.getString("PRF_CD_CD1").trim(),
+                                rs.getString("SMV_CD_CD1"),
+                                rs.getDate("CD1_EFF_DT"),
+                                rs.getDate("CD1_EXP_DT"),
+                                rs.getString("CD1_BROKER_PRES_CD").trim(),
+                                rs.getString("CD1_SEC_PRES_CD").trim(),
+                                rs.getString("CD1_TEST_IN").trim(),
+                                rs.getString("CD1_EVENT_DRIVE_IN").trim(),
+                                rs.getInt("CD1_NO"),
+                                rs.getInt("CR1_NO_CD1"),
+                                rs.getString("region"),
+                                rs.getString("CD1_CONTINGENCY_IN"),
+                                rs.getString("CD1_SEND_CD"),
+                                rs.getString("CD1_CASH_SUPP_IN"),
+                                rs.getString("CD1_INCR_IN"),
+                                rs.getString("CD1_ACCTG_BASIS_CD"),
+                                rs.getInt("CD1_PROJECTION_DS"),
+                                rs.getString("CDS_ID_CD1"),
+                                rs.getString("CD1_HOLD_SUPP_IN"),
+                                rs.getString("CD1_ACCT_XREF_CD")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getSecAccts(int cr1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+        sql = "SELECT ACC_NO_CS1,\n" +
+                " SHORT_NAME\n" +
+                ",STATUS_CODE\n" +
+                "FROM " + regiona + ".CRG_SEC_ACCOUNT1\n" +
+                "," + regiona + ".CUSTOMER_ACCOUNT\n" +
+                "WHERE CR1_NO_CS1 = " + cr1Number +
+                " AND NUMBER = ACC_NO_CS1\n" +
+                "WITH UR;";
+        System.out.println("sql sec act->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("ACC_NO_CS1"),
+                                rs.getString("SHORT_NAME"),
+                                rs.getString("STATUS_CODE")
+                        ));
+//        return null;
+    }
+    public List<InputDto> getSecAcctsPos(int cr1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+//        sql = "SELECT ACC_NO_CS1,\n" +
+//                " SHORT_NAME\n" +
+//                ",STATUS_CODE\n" +
+//                "FROM " + regiona + ".CRG_SEC_ACCOUNT1\n" +
+//                "," + regiona + ".CUSTOMER_ACCOUNT\n" +
+//                "WHERE CR1_NO_CS1 = " + cr1Number +
+//                " AND NUMBER = ACC_NO_CS1\n" +
+//                "WITH UR;";
+
+        sql ="SELECT  ACC.NUMBER\n" +
+                "      , ACC.LEGAL_TITLE_NAME\n" +
+                "--     , ACC.FK_CUS_OWNED_BY\n" +
+                "--      , CC1.CC1_CUSTODY_CD\n" +
+                "FROM  " + regiona + ".CUSTOMER_ACCOUNT  ACC\n" +
+                "    , " + regiona + ".CRG_CUSTOMER1     CC1\n" +
+                "WHERE  CC1.CR1_NO_CC1       =  " + cr1Number +
+                "  AND  ACC.FK_CUS_OWNED_BY  =  CC1.CUS_ID_CC1\n" +
+                "  AND  ACC.STATUS_CODE   IN  ('ACT','OPN')\n" +
+                "  AND NOT EXISTS\n" +
+                "     ( SELECT *\n" +
+                "       FROM    " + regiona + ".CRG_CUST_EXCL_ACC1  CE1\n" +
+                "       WHERE  CE1.CR1_NO_CE1 = " + cr1Number +
+                "         AND  CE1.CUS_ID_CE1 = CC1.CUS_ID_CC1\n" +
+                "         AND  ACC_NO_CE1     = ACC.NUMBER)\n" +
+                "ORDER BY  NUMBER\n" +
+                "FOR FETCH ONLY\n" +
+                "WITH UR";
+
+        System.out.println("sql sec act pos->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("NUMBER"),
+                                rs.getString("LEGAL_TITLE_NAME")
+//                                rs.getString("fk_cus_owned_by")
+                        ));
+//        return null;
+    }
+
+
+    @Override
+    public List<InputDto> getCashAcct(int cr1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+        sql = "select A.SRC_CD_CA1 \n" +
+                ",A.CAC_NO_CA1\n" +
+                ",B.SHORT_NAME\n" +
+                ",B.CLOSE_DATE\n" +
+                "from " + regiona + ".CRG_CASH_ACCOUNT1 A\n" +
+                "," + regiona + ".CASH_ACCOUNT\tB\n" +
+                "where A.CR1_NO_CA1 = " + cr1Number + "\n" +
+                "AND B.NUMBER = A.CAC_NO_CA1\n" +
+                "AND B.SOURCE_SYSTEM_CODE = A.SRC_CD_CA1 \n" +
+                "WITH UR;";
+        System.out.println("sql cash act->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getString("SRC_CD_CA1"),
+                                rs.getString("CAC_NO_CA1"),
+                                rs.getString("SHORT_NAME"),
+                                rs.getString("CLOSE_DATE")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getSchedule(int cd1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+        sql = "SELECT CXS_NO, \n" +
+                "CASE CXS_FREQUENCY_CD\n" +
+                "     WHEN 'HR'\n" +
+                "   THEN 'HOURLY'\n" +
+                "WHEN 'DY'\n" +
+                "   THEN 'HOURLY'\n" +
+                "WHEN 'DI'\n" +
+                "   THEN 'INTRDAY'\n" +
+                "WHEN 'WK'\n" +
+                "   THEN 'WEEKLY'\n" +
+                "WHEN 'BI'\n" +
+                "   THEN 'BIMONTLY'\n" +
+                "WHEN 'MO'\n" +
+                "   THEN 'MONTHLY'\n" +
+                "WHEN 'MB'\n" +
+                "   THEN 'MONTHLY GBD'\n" +
+                "WHEN 'MA'\n" +
+                "   THEN 'MONTHLY AS OF'\n" +
+                "WHEN 'WM'\n" +
+                "   THEN 'WEEKLY/MONTHLY'\n" +
+                "WHEN 'QY'\n" +
+                "   THEN 'QUARTERLY'\n" +
+                "WHEN 'RQ'\n" +
+                "   THEN 'ON REQUEST'\n" +
+                "ELSE\n" +
+                "   CXS_FREQUENCY_CD \n" +
+                "END AS CXS_FREQUENCY_CD,\n" +
+                "       CASE CXS_COB_IN\n" +
+                "       WHEN '1' THEN 'Close of Business'\n" +
+                "       ELSE CXS_COB_IN \n" +
+                "       END AS CXS_COB_IN,\n" +
+                "       CXS_EFFECTIVE_DT,\n" +
+                "       CXS_DE       \n" +
+                "FROM " + regiona + ".CLNT_EXT_SCHEDULE\n" +
+                "    ," + regiona + ".CDV_EXT_SCHD_LINK1\n" +
+                "WHERE CD1_NO_CL1       =  " + cd1Number + "\n" +
+                "  AND CXS_NO           =  CXS_NO_CL1\n" +
+                "ORDER BY CXS_COB_IN,\n" +
+                "         CXS_FREQUENCY_CD,\n" +
+                "         CXS_START_TM,\n" +
+                "         CXS_DE,\n" +
+                "         CXS_NO\n" +
+                "         WITH UR;         ";
+//        System.out.println("sql schedule->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getInt("CXS_NO"),
+                                rs.getString("CXS_FREQUENCY_CD"),
+                                rs.getString("CXS_COB_IN"),
+                                rs.getDate("CXS_EFFECTIVE_DT"),
+                                rs.getString("CXS_DE")
+                        ));
+    }
+
+    @Override
+    public List<CategoryDto> getCategory(int cd1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+        sql = "SELECT PRF_CD_CF1 \t\t\t\n" +
+                "      ,CXD_CD_CF1  \t\t\t\n" +
+                "      ,CF1_EXT_PROCESS_ID  \t\n" +
+                "      ,CF1_SEGMENT_CT\t\t\n" +
+                "FROM " + regiona + ".CDV_EXT_FEATURE1\n" +
+                "WHERE CD1_NO_CF1       =  " + cd1Number + "\n" +
+                "ORDER BY CD1_NO_CF1       DESC \n" +
+                "WITH UR;";
+
+        System.out.println("sql category->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new CategoryDto(
+                                rs.getString("PRF_CD_CF1"),
+                                rs.getString("CXD_CD_CF1"),
+                                rs.getString("CF1_EXT_PROCESS_ID"),
+                                rs.getInt("CF1_SEGMENT_CT")
+                        ));
+    }
+
+    @Override
+    public List<DestinationDto> getDestination(int cd1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+
+        sql = "  SELECT DDE_ID_DL1\n" +
+                "      ,DDE_SRC_ID_DL1\n" +
+                "      ,DL1_ACTION_CD\n" +
+                "      ,DDE_LINE1_NM\n" +
+                "FROM " + regiona + ".DLV_DEST_EXT_LINK1\n" +
+                "      ," + regiona + ".DLV_DESTINATION\n" +
+                "  WHERE CD1_NO_DL1   =  " + cd1Number + "\n" +
+                "    AND DDE_TY       = DDE_TY_DL1\n" +
+                "    AND DDE_ID_DL1   = DDE_ID\n" +
+                "  ORDER BY DDE_ID_DL1 WITH UR;";
+
+        System.out.println("sql destination->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new DestinationDto(
+                                rs.getString("DDE_ID_DL1"),
+                                rs.getString("DDE_SRC_ID_DL1"),
+                                rs.getString("DL1_ACTION_CD"),
+                                rs.getString("DDE_LINE1_NM")
+                        ));
+    }
+
+    @Override
+    public List<InputDto> getOptDetail(int cr1Number, int cd1Number, String region) {
+        String regiona = region.trim();
+        String sql = "";
+
+        sql = "SELECT  ROW_NUMBER() OVER() as row_count ,ACV_DE\n" +
+                "          ,CASE SUBSTR(CD1_ADD_OPT_MAP,ROW_NUMBER() OVER(),1)\n" +
+                "          \tWHEN '@' THEN ' ' \n" +
+                "        \tELSE SUBSTR(CD1_ADD_OPT_MAP,ROW_NUMBER() OVER(),1)\n" +
+                "        \tEND  AS  CD1_ADD_OPT_MAP     \t\n" +
+                "       ,ACV_LONG_DE\n" +
+                "  FROM  " + regiona + ".APPL_CODE_VALUE\n" +
+                "       ," + regiona + ".CDV_EXTRACT1\n" +
+                " WHERE  APC_CI_ACV = 'X31'\n" +
+                "   AND  SUBSTR(ACV_CD,3,6) = SUBSTR(SMG_TY_CD1,1,6)\n" +
+                "   AND CD1_NO     = " + cd1Number + " \n" +
+                "   AND CR1_NO_CD1 = " + cr1Number + " \n" +
+                "       WITH UR;";
+        System.out.println("sql detail->" + sql);
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) ->
+                        new InputDto(
+                                rs.getInt("row_count"),
+                                rs.getString("ACV_DE"),
+                                rs.getString("CD1_ADD_OPT_MAP"),
+                                rs.getString("ACV_LONG_DE")
+                        ));
+    }
+
+    @Override
+    public int updateSetup(InputDto inputDto) {
+        String sql = " ";
+        sql = "UPDATE " + inputDto.getRegion() + ".CDV_EXTRACT1  \n" +
+                "SET SMG_TY_CD1    = ?\n" +
+                ",CD1_FORMAT_CD = ?\n" +
+                ",PRF_CD_CD1\t = ?\n" +
+                ",SMV_CD_CD1  = ?\n" +
+                ",CD1_EFF_DT  = ?\n" +
+                ",CD1_EXP_DT  = ?\n" +
+                ",CD1_BROKER_PRES_CD  = ?\n" +
+                ",CD1_SEC_PRES_CD  = ?\n" +
+                ",CD1_TEST_IN  = ?\n" +
+                ",CD1_EVENT_DRIVE_IN  = ?\n" +
+                ",CD1_UPDATE_TS = CURRENT TIMESTAMP " +
+                "WHERE CR1_NO_CD1 = ?\n" +
+                "  AND CD1_NO = ?";
+
+        System.out.println("update sql->" + sql);
+
+        return jdbcTemplate.update(sql,
+                inputDto.getMsgtype().trim(),
+                inputDto.getFormatCd().trim(),
+                inputDto.getProdCode().trim(),
+                inputDto.getVariations().trim(),
+                inputDto.getEffectiveDate(),
+                inputDto.getExpireDate(),
+                inputDto.getBrokerPresentCd().trim(),
+                inputDto.getSecPresCd().trim(),
+                inputDto.getTestInd().trim(),
+                inputDto.getEventDriven().trim(),
+                inputDto.getCr1Number(),
+                inputDto.getCd1Number());
+    }
+
+
+}
+
+=======================
+Models 
+package com.abu.cxf.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class CategoryDto extends InputDto {
+    private String catProduct;
+    private String catCategory;
+    private String catProcessJob;
+    private int catSegment;
+
+}
+
+package com.abu.cxf.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class DestinationDto extends InputDto {
+    private String destName;
+    private String destSource;
+    private String destAction;
+    private String destDesc;
+
+}
+package com.abu.cxf.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+//import javax.validation.constraints.NotBlank;
+//import javax.validation.constraints.NotEmpty;
+//import javax.validation.constraints.Size;
+import java.sql.Date;
+import java.util.List;
+import java.util.Map;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class InputDto {
+    private int row_count;
+    public String region;
+    private String delivaryGroup;
+    private String qualifier;
+    private String desc;
+    public int cr1Number;
+    public int cd1Number;
+    public String msgtype;
+    public String formatCd;
+    public String prodCode;
+    public String variations;
+    public Date effectiveDate;
+    public Date expireDate;
+    public String brokerPresentCd;
+    public String secPresCd;
+    public String testInd;
+    public String eventDriven;
+    public String accPresCd;
+
+    //    @NotBlank(message = "Security account should be entered")
+//    @Size(min=4, max=40)
+//    @NotEmpty(message = "Security account should be entered")
+    private String account;
+    private String shortName;
+    private String actStatus;
+
+    ////    @NotBlank(message = "cash account should be entered")
+    private String cashAccount;
+    private String cashAccountBranch;
+    private String cashAccountname;
+    private String cashAccountCloseDate;
+
+    private int schdno;
+    private String schdfreqcd;
+    private String schdcob;
+    private Date schdeffcdt;
+    private String schddesc;
+
+    private String detDesc;
+    private String detOption;
+    private String detLongDesc;
+
+    private List<Map<String, Object>> dataList;   
+}
+
+
+package com.abu.cxf.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.sql.Date;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class ViewUpdateDto extends InputDto {
+
+    private String contingencyInd;
+    private String sendCode;
+    private String cashSuppress;
+    private String incrInd;
+    private String acctBasisCd;
+    private int projDays;
+    private String holidaySchd;
+    private String holdSuppressInd;
+    private String acctPresentCd;
+
+}
+
+===================
+menu form 
+
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>CXFII Enquire screen</title>
+    <!--    <link rel="stylesheet"-->
+    <!--          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"-->
+    <!--          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"-->
+    <!--          crossorigin="anonymous">-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+<style>
+    body, h1, h2, h3, h4, h5, h6 {
+        font-family: "Cambria";
+    }
+</style>
+<body>
+
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+    <!-- Brand -->
+    <a class="navbar-brand" href=""><h5>CXF-II Home</h5></a>
+    <!-- Toggler/collapsibe Button -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyACT}">Enquire by SEC Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyCashACT}">Enquire by Cash Account</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<div class="container">
+    <form action="#" th:action="@{/cxfmenu}" method="post" th:object="${inputDto}">
+        <div class="card-body">
+            <!--            <br>-->
+            <div class="form">
+                <div class="row">
+                    <h3>Enquire CXF II Setups by Delivery Group </h3>
+                </div>
+                <div class="mb-3">
+                    <label for="exampleFormControlSelect1">GDW region</label>
+                    <select th:field="*{region}" class="form-select" id="exampleFormControlSelect1">
+                        <option th:each="p : ${listRegion}" th:value="${p}" th:text="${p}"/>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Connect-CXFII</button>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col">
+                        <label for="exampleDataList" class="form-label">Delivery Group</label>
+                        <input type="text" class="form-control" th:field="*{delivaryGroup}"
+                               list="datalistOptions"
+                               id="exampleDataList"
+                               placeholder="Type to search Delivery group...">
+                        <datalist id="datalistOptions">
+                            <option th:each="p : ${listofBICS}" th:value="${p}" th:text="${p}"/>
+                        </datalist>
+                    </div>
+                    <div class="col">
+                        <label for="formGroupExampleInput2" class="form-label">Message Type</label>
+                        <input type="text" th:field="*{msgtype}" class="form-control" id="formGroupExampleInput2"
+                               placeholder="Enter Message Type">
+                    </div>
+                    <div class="col">
+                        <label for="formGroupExampleInput3" class="form-label">Product Code</label>
+                        <input type="text" th:field="*{prodCode}" class="form-control" id="formGroupExampleInput3"
+                               placeholder="Enter product code">
+                    </div>
+                </div>
+                <br>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+                <br>
+            </div>
+            <div th:if="${not #lists.isEmpty(inputDtos)}">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                    <tr>
+                        <th> Delivery Group</th>
+                        <th> Qualifier</th>
+                        <th> Description</th>
+                        <th> Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="inputDt: ${inputDtos}">
+                        <td th:text="${inputDt.delivaryGroup}"></td>
+                        <td th:text="${inputDt.qualifier}"></td>
+                        <td th:text="${inputDt.desc}"></td>
+                        <td>
+                            <a th:href="@{/cxf/view/{cr1Number}/{region}(cr1Number=${inputDt.cr1Number},region=${inputDto.region})}"
+                               class="btn btn-secondary btn-sm mb-3">view setup</a>
+                            <a th:href="@{/cxf/secacct/{region}/{cr1Number} (region=${inputDto.region},cr1Number=${inputDt.cr1Number})}"
+                               class="btn btn-secondary btn-sm mb-3"> Security Accounts</a>
+                            <a th:href="@{/cxf/cashacct/{region}/{cr1Number} (region=${inputDto.region},cr1Number=${inputDt.cr1Number})}"
+                               class="btn btn-secondary btn-sm mb-3"> Cash Accounts</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <br>
+            <div th:unless="${not #lists.isEmpty(inputDtos)}">
+                <div th:if="${inputDto.delivaryGroup != null }">
+                    <h4 th:text="'The Delivery Group: '+ ${inputDto.delivaryGroup} + ' is not setup in CXFII for above Msg Type'"></h4>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #212529;
+        color: white;
+        text-align: center;
+    }
+</style>
+<div class="footer">
+    <p>Global Data warehouse</p>
+</div>
+</body>
+</html>
+=================================================
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>CXFII Schedule screen</title>
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+</head>
+<style>
+    body, h1, h2, h3, h4, h5, h6 {
+        font-family: "Cambria";
+    }
+</style>
+<body>
+<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+    <!-- Brand -->
+    <!--    <a class="navbar-brand" href=""><h5>CXF-II Home</h5></a>-->
+    <!--    &lt;!&ndash; Toggler/collapsibe Button &ndash;&gt;-->
+    <!--    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">-->
+    <!--        <span class="navbar-toggler-icon"></span>-->
+    <!--    </button>-->
+
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXF-II Home</h5></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyACT}">Enquire by SEC Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyCashACT}">Enquire by Cash Account</a>
+            </li>
+            <!--            <li class="nav-item">-->
+            <!--                <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXFII Enqire</h5></a>-->
+            <!--            </li>-->
+            <!--            <li class="nav-item">-->
+            <!--                <a class="nav-link" th:href="@{/cxf-update}">CXFII Update</a>-->
+            <!--            </li>-->
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <h3>&nbsp;Schedule Details</h3>
+    </div>
+
+    <form action="#" th:action="@{/cxfmenu}" method="post" th:object="${inputDto}">
+        <div th:if="${not #lists.isEmpty(inputDtos)}">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                <tr>
+                    <th> Number</th>
+                    <th> Frequency Code</th>
+                    <th> COB</th>
+                    <th> Effective Date</th>
+                    <th> Description</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="inputDt: ${inputDtos}">
+                    <td th:text="${inputDt.schdno}"></td>
+                    <td th:text="${inputDt.schdfreqcd}"></td>
+                    <td th:text="${inputDt.schdcob}"></td>
+                    <td th:text="${inputDt.schdeffcdt}"></td>
+                    <td th:text="${inputDt.schdfreqcd}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <div th:unless="${not #lists.isEmpty(inputDtos)}">
+            <h4>Schedule details are not present in this CXFII setup</h4>
+        </div>
+    </form>
+</div>
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #212529;
+        color: white;
+        text-align: center;
+    }
+</style>
+<div class="footer">
+    <p>Global Data warehouse</p>
+</div>
+</body>
+</html>
+
+====
+
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>CXFII Enquire screen</title>
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+</head>
+<style>
+    body, h1, h2, h3, h4, h5, h6 {
+        font-family: "Cambria";
+    }
+</style>
+<body>
+<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+    <!-- Brand -->
+    <!--    <a class="navbar-brand" href=""><h5>CXF-II Home</h5></a>-->
+    <!-- Toggler/collapsibe Button -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXF-II Home</h5></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyACT}">Enquire by SEC Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyCashACT}">Enquire by Cash Account</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <h3>&nbsp;Security accounts</h3>
+    </div>
+
+    <form action="#" th:action="@{/cxfmenu}" method="post" th:object="${inputDto}">
+        <div th:if="${not #lists.isEmpty(inputDtos)}">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                <tr>
+                    <th> Account Number</th>
+                    <th> Security Account Name</th>
+                    <th> Status Code</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="inputDt: ${inputDtos}">
+                    <td th:text="${inputDt.account}"></td>
+                    <td th:text="${inputDt.shortName}"></td>
+                    <td th:text="${inputDt.actStatus}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <div th:unless="${not #lists.isEmpty(inputDtos)}">
+            <h4>Security accounts are not present in this CXFII setup</h4>
+        </div>
+    </form>
+</div>
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #212529;
+        color: white;
+        text-align: center;
+    }
+</style>
+<div class="footer">
+    <p>Global Data warehouse</p>
+</div>
+</body>
+</html>
+==================================
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>CXFII detail screen</title>
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+</head>
+<style>
+    body, h1, h2, h3, h4, h5, h6 {
+        font-family: "Cambria";
+    }
+</style>
+<body>
+<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+    <!-- Brand -->
+    <!--    <a class="navbar-brand" href=""><h5>CXF-II Home</h5></a>-->
+
+    <!-- Toggler/collapsibe Button -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#collapsibleNavbar">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <!--        <ul class="navbar-nav">-->
+        <!--            <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXFII Enqire</h5></a>-->
+        <!--        </ul>-->
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXF-II Home</h5></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyACT}">Enquire by SEC Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyCashACT}">Enquire by Cash Account</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<br>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-6 col-md-6 col-sm-6 container justify-content-center card">
+            <h5 class="text-center">&nbsp;View and Update CXF-II Setup</h5>
+            <div class="card-body">
+                <form th:action="@{/cxf/update/{region}/{cr1Number}/{cd1Number}
+                                   (region=${inputDto.region},cr1Number=${inputDto.cr1Number}, cd1Number=${inputDto.cd1Number})}"
+                      th:object="${ViewUpdateDto}" method="POST">
+                    <div class="form-group">
+                        <label> Message Type</label> <input type="text"
+                                                            name="msgtype" th:field="*{msgtype}"
+                                                            class="form-control"
+                                                            placeholder="Enter Message Type"/>
+                    </div>
+                    <!--                    <div class="form-group">-->
+                    <!--                        <label> Format Code</label> <input type="text"-->
+                    <!--                                                           name="formatCd" th:field="*{formatCd}"-->
+                    <!--                                                           class="form-control"-->
+                    <!--                                                           placeholder="Enter Format Code"/>-->
+                    <!--                    </div>-->
+                    <!--                    <div class="form-group">-->
+                    <!--                        <label> Product Code</label> <input type="text"-->
+                    <!--                                                            name="prodCode" th:field="*{prodCode}"-->
+                    <!--                                                            class="form-control"-->
+                    <!--                                                            placeholder="Enter Product Code"/>-->
+                    <!--                    </div>-->
+                    <!--                    <div class="form-group">-->
+                    <!--                        <label> Variation</label> <input type="text"-->
+                    <!--                                                         name="variations" th:field="*{variations}"-->
+                    <!--                                                         class="form-control"-->
+                    <!--                                                         placeholder="Enter variation"/>-->
+                    <!--                    </div>-->
+                    <div class="form-group">
+                        <label> PRESENTATION OF BROKER: (BIC/FINS/XREF BLANK=DEFAULT)</label> <input type="text"
+                                                                                                     name="brokerPresentCd"
+                                                                                                     th:field="*{brokerPresentCd}"
+                                                                                                     class="form-control"
+                                                                                                     placeholder="BIC/FINS/XREF BLANK=DEFAULT"/>
+                    </div>
+                    <div class="form-group">
+                        <label> SECURITIES:(ISIN/LOCL/XREF/DREF/CREF/NREF/S&P/OPRA/OCC)</label> <input type="text"
+                                                                                                       name="secPresCd"
+                                                                                                       th:field="*{secPresCd}"
+                                                                                                       class="form-control"
+                                                                                                       placeholder="ISIN/LOCL/XREF/DREF/CREF/NREF/S&P/OPRA/OCC"/>
+                    </div>
+                    <div class="form-group">
+                        <label> ACCOUNTS:(T=TITAN / C=COSMIC / N=NONE)</label> <input type="text"
+                                                                                      name="acctPresentCd"
+                                                                                      th:field="*{acctPresentCd}"
+                                                                                      class="form-control"
+                                                                                      placeholder="T=TITAN / C=COSMIC / N=NONE"/>
+                    </div>
+                    <div class="form-group">
+                        <label> Effective Date</label> <input type="date"
+                                                              name="effectiveDate" th:field="*{effectiveDate}"
+                                                              class="form-control"
+                                                              placeholder="Enter Effective Date"/>
+                    </div>
+                    <div class="form-group">
+                        <label> Expiry Date</label> <input type="date"
+                                                           name="expireDate" th:field="*{expireDate}"
+                                                           class="form-control"
+                                                           placeholder="Enter Expiry date"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label> Test Indicator:(Y/N)</label> <input type="text"
+                                                                    name="testInd" th:field="*{testInd}"
+                                                                    class="form-control"
+                                                                    placeholder="Test Indicator"/>
+                    </div>
+                    <div th:switch="*{eventDriven}">
+                        <div th:case="'Y'" class="form-group">
+                            <div class="form-group">
+                                <label> Event Driven Indicator:(Y/N)</label> <input type="text"
+                                                                                    name="eventDriven"
+                                                                                    th:field="*{eventDriven}"
+                                                                                    class="form-control"
+                                                                                    placeholder="Event Driven Indicator"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:switch="*{msgtype}">
+                        <div th:case="'MT540'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT541'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT542'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT543'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT544'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT545'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                                <br>
+                                <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>
+                                <input
+                                        type="text"
+                                        name="acctBasisCd" th:field="*{acctBasisCd}"
+                                        class="form-control"
+                                        placeholder="SUPPRESS CMO ADJUSTMENTS:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT546'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT547'" class="form-group">
+                            <div class="form-group">
+                                <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                                <br>
+                                <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>
+                                <input
+                                        type="text"
+                                        name="acctBasisCd" th:field="*{acctBasisCd}"
+                                        class="form-control"
+                                        placeholder="SUPPRESS CMO ADJUSTMENTS:"/>
+
+                            </div>
+                        </div>
+                        <div th:case="'MT548'" class="form-group">
+                            <div class="form-group">
+                                <label> NOTIFICATION SEND MESSAGE:(C=CANCEL, F=FAIL, B=BOTH)</label> <input
+                                    type="text"
+                                    name="sendCode"
+                                    th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="NOTIFICATION SEND MESSAGE:"/>
+                                <br>
+                                <label> SUPPRESS EOD FAIL AFTER DK:(Y/N)</label>
+                                <input
+                                        type="text"
+                                        name="incrInd" th:field="*{incrInd}"
+                                        class="form-control"
+                                        placeholder="SUPPRESS EOD FAIL AFTER DK:"/>
+                                <br>
+                                <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>
+                                <input
+                                        type="text"
+                                        name="acctBasisCd" th:field="*{acctBasisCd}"
+                                        class="form-control"
+                                        placeholder="SUPPRESS CMO ADJUSTMENTS:"/>
+
+                            </div>
+                        </div>
+                    </div>
+                    <!--                    <div th:switch="*{msgtype}">-->
+                    <!--                        <div th:case="'MT545'" class="form-group">-->
+                    <!--                            <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>-->
+                    <!--                            <input-->
+                    <!--                                    type="text"-->
+                    <!--                                    name="acctBasisCd" th:field="*{acctBasisCd}"-->
+                    <!--                                    class="form-control"-->
+                    <!--                                    placeholder="SUPPRESS CMO ADJUSTMENTS:"/>-->
+                    <!--                        </div>-->
+                    <!--                    </div>-->
+
+                    <div th:switch="*{msgtype}">
+                        <div th:case="'MT950'" class="form-group">
+                            <label> DISPLAY STIF BALANCES:(0-NO, 1-STIF FIELD 64, 2-STIF FIELDS 60/62)</label>
+                            <input
+                                    type="text"
+                                    name="contingencyInd" th:field="*{contingencyInd}"
+                                    class="form-control"
+                                    placeholder="DISPLAY STIF BALANCES:"/>
+                            <!--                        </div>-->
+                            <br>
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <label> SEC LENDING SUPPRESS:(Y/N)</label> <input type="text"
+                                                                              name="sendCode"
+                                                                              th:field="*{sendCode}"
+                                                                              class="form-control"
+                                                                              placeholder="SEC LENDING SUPPRESS:"/>
+                            <!--                        </div>-->
+                            <br>
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <label> NO MOVEMENT SUPPRESS:(Y/N)</label> <input
+                                type="text"
+                                name="cashSuppress" th:field="*{cashSuppress}"
+                                class="form-control"
+                                placeholder="NO MOVEMENT SUPPRESS:"/>
+                            <!--                        </div>-->
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <br>
+                            <label> IDENTIFY DIVIDEND AS FX:(Y/N)</label> <input type="text"
+                                                                                 name="incrInd"
+                                                                                 th:field="*{incrInd}"
+                                                                                 class="form-control"
+                                                                                 placeholder="IDENTIFY DIVIDEND AS FX:"/>
+                            <!--                        </div>-->
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <br>
+                            <label> CLIENT SPECIFIC OPTION:(S=SCHRODERS,F=FIDELITY,C=COMBINED CASH)</label>
+                            <input
+                                    type="text"
+                                    name="acctBasisCd"
+                                    th:field="*{acctBasisCd}"
+                                    class="form-control"
+                                    placeholder="CLIENT SPECIFIC OPTION:"/>
+                        </div>
+                        <div th:case="'MT940'" class="form-group">
+                            <label> DISPLAY STIF BALANCES:(0-NO, 1-STIF FIELD 64, 2-STIF FIELDS 60/62)</label>
+                            <input
+                                    type="text"
+                                    name="contingencyInd" th:field="*{contingencyInd}"
+                                    class="form-control"
+                                    placeholder="DISPLAY STIF BALANCES:"/>
+                            <!--                        </div>-->
+                            <br>
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <label> SEC LENDING SUPPRESS:(Y/N)</label> <input type="text"
+                                                                              name="sendCode"
+                                                                              th:field="*{sendCode}"
+                                                                              class="form-control"
+                                                                              placeholder="SEC LENDING SUPPRESS:"/>
+                            <!--                        </div>-->
+                            <br>
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <label> NO MOVEMENT SUPPRESS:(Y/N)</label> <input
+                                type="text"
+                                name="cashSuppress" th:field="*{cashSuppress}"
+                                class="form-control"
+                                placeholder="NO MOVEMENT SUPPRESS:"/>
+                            <!--                        </div>-->
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <br>
+                            <label> IDENTIFY DIVIDEND AS FX:(Y/N)</label> <input type="text"
+                                                                                 name="incrInd"
+                                                                                 th:field="*{incrInd}"
+                                                                                 class="form-control"
+                                                                                 placeholder="IDENTIFY DIVIDEND AS FX:"/>
+                            <!--                        </div>-->
+                            <!--                        <div th:case="'MT950'" class="form-group">-->
+                            <br>
+                            <label> CLIENT SPECIFIC OPTION:(S=SCHRODERS,F=FIDELITY,C=COMBINED CASH)</label>
+                            <input
+                                    type="text"
+                                    name="acctBasisCd"
+                                    th:field="*{acctBasisCd}"
+                                    class="form-control"
+                                    placeholder="CLIENT SPECIFIC OPTION:"/>
+                        </div>
+                        <div th:case="'MT567'" class="form-group">
+                            <label> INSTRUCTION SEND MSG FLAG:(P=PRELIMINARY F=FINAL B=BOTH)</label>
+                            <input
+                                    type="text"
+                                    name="sendCode" th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="INSTRUCTION SEND MSG FLAG:"/>
+
+                        </div>
+                        <div th:case="'MT535'" class="form-group">
+                            <label> PLACE OF SAFEKEEPING BIC:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="sendCode" th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="PLACE OF SAFEKEEPING BIC:"/>
+                            <br>
+                            <label> CONFIRM SEND MESSAGE FLAG:(C=COMPLETION R=REGISTRAR F=BOTH)</label> <input
+                                type="text"
+                                name="sendCode"
+                                th:field="*{sendCode}"
+                                class="form-control"
+                                placeholder="CONFIRM SEND MESSAGE FLAG:"/>
+                            <label> NO ACTIVITY SUPPRESS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                    class="form-control"
+                                    placeholder="NO ACTIVITY SUPPRESS:"/>
+                            <br>
+                            <label> SUPPRESS TBA/REPO POSITION:(N=NO, R=REPO, T=TBA, B=BOTH)</label>
+                            <input
+                                    type="text"
+                                    name="incrInd" th:field="*{incrInd}"
+                                    class="form-control"
+                                    placeholder="SUPPRESS TBA/REPO POSITION:"/>
+                            <br>
+                            <label> DUPLICATE ACCTG HOLDINGS:(S=SUPPRESS, A=ALLOW - ACCOUNTING ONLY)</label>
+                            <input
+                                    type="text"
+                                    name="contingencyInd" th:field="*{contingencyInd}"
+                                    class="form-control"
+                                    placeholder="DUPLICATE ACCTG HOLDINGS:"/>
+                        </div>
+                        <div th:case="'MT536'" class="form-group">
+                            <label> NO ACTIVITY SUPPRESS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                    class="form-control"
+                                    placeholder="NO ACTIVITY SUPPRESS:"/>
+                            <br>
+                            <label> TITAN MOVEMENT SUPPRESS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="incrInd" th:field="*{incrInd}"
+                                    class="form-control"
+                                    placeholder="TITAN MOVEMENT SUPPRESS:"/>
+                            <br>
+                            <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="acctBasisCd" th:field="*{acctBasisCd}"
+                                    class="form-control"
+                                    placeholder="SUPPRESS CMO ADJUSTMENTS:"/>
+                        </div>
+                        <div th:case="'MT537'" class="form-group">
+                            <label> CLIENT INITIATED CANCELS:(P=GLBL-PPRC,C=GLBL-CPRC/DOM-CANC,B=BTH,N=NONE)</label>
+                            <input
+                                    type="text"
+                                    name="sendCode" th:field="*{sendCode}"
+                                    class="form-control"
+                                    placeholder="CLIENT INITIATED CANCELS:"/>
+                            <br>
+                            <label> NO ACTIVITY SUPPRESS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                    class="form-control"
+                                    placeholder="NO ACTIVITY SUPPRESS:"/>
+                            <br>
+                            <label> TITAN MOVEMENT SUPPRESS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="incrInd" th:field="*{incrInd}"
+                                    class="form-control"
+                                    placeholder="TITAN MOVEMENT SUPPRESS:"/>
+                            <br>
+                            <label> SUPPRESS CMO ADJUSTMENTS:(Y/N)</label>
+                            <input
+                                    type="text"
+                                    name="acctBasisCd" th:field="*{acctBasisCd}"
+                                    class="form-control"
+                                    placeholder="SUPPRESS CMO ADJUSTMENTS:"/>
+                        </div>
+                        <div th:case="'MT564'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'M564'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'R564'" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:(S=SPLIT, C=COMBINED)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder=" SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                                <div th:case="'GU64'" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:(S=SPLIT, C=COMBINED)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder=" SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                                <div th:case="'E564'" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:(S=SPLIT, C=COMBINED)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder=" SPLIT P&I INDICATOR FLAG:"/>
+                                    <br>
+                                    <label> SUPP VOLUNTARY MSGS:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                            class="form-control"
+                                            placeholder=" SUPP VOLUNTARY MSGS:"/>
+                                </div>
+                                <div th:case="'B564'" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:(S=SPLIT, C=COMBINED)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder=" SPLIT P&I INDICATOR FLAG:"/>
+                                    <br>
+                                    <label> SUPP VOLUNTARY MSGS:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                            class="form-control"
+                                            placeholder=" SUPP VOLUNTARY MSGS:"/>
+                                </div>
+                                <div th:case="'BU64'" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:(S=SPLIT, C=COMBINED)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder=" SPLIT P&I INDICATOR FLAG:"/>
+                                    <br>
+                                    <label> SUPP VOLUNTARY MSGS:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                            class="form-control"
+                                            placeholder=" SUPP VOLUNTARY MSGS:"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div th:case="'MT568'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'M568'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div th:case="'MT566I'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'L56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'L566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'D566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566S'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'A56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'B56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566A'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="*" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                                <br>
+                                <label> SUPPRESS UNIQUE SEME:(Y/N)</label>
+                                <input
+                                        type="text"
+                                        name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                        class="form-control"
+                                        placeholder="SUPPRESS UNIQUE SEME:"/>
+                            </div>
+                        </div>
+                        <div th:case="'MT566R'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'T566'" class="form-group">
+                                    <label> EXCLUDE COMM. PAPER:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                            class="form-control"
+                                            placeholder="EXCLUDE COMM. PAPER:"/>
+                                    <br>
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                                <div th:case="'L56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'L566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'D566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566S'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'A56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'B56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566A'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="*" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div th:case="'MT566S'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'T566'" class="form-group">
+                                    <label> EXCLUDE COMM. PAPER:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="holdSuppressInd" th:field="*{holdSuppressInd}"
+                                            class="form-control"
+                                            placeholder="EXCLUDE COMM. PAPER:"/>
+                                    <br>
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                                <div th:case="'L56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'L566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'D566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566S'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'A56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'B56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+
+                                <div th:case="'566I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566A'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="*" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div th:case="'MT566A'" class="form-group">
+                            <div th:switch="*{prodCode}">
+                                <div th:case="'L56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E56R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'L566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'E566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566R'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'D566'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566S'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'A56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'B56I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566I'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="'566A'" class="form-group">
+                                    <label> COMBINE LEND/LOAN FLAG:(Y/N)</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="COMBINE LEND/LOAN FLAG:"/>
+                                </div>
+                                <div th:case="*" class="form-group">
+                                    <label> SPLIT P&I INDICATOR FLAG:</label>
+                                    <input
+                                            type="text"
+                                            name="sendCode" th:field="*{sendCode}"
+                                            class="form-control"
+                                            placeholder="SPLIT P&I INDICATOR FLAG:"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- * for default case -->
+                    <!--                        <p th:case="MT535">User is some other thing MT535</p>-->
+
+                    <div class="form-group">
+                        <label> PROJECTION DAYS:</label> <input type="text"
+                                                                name="projDays" th:field="*{projDays}"
+                                                                class="form-control"
+                                                                placeholder="PROJECTION DAYS:"/>
+                    </div>
+                    <div class="form-group">
+                        <label> HOLIDAY SCHEDULE:</label> <input type="text"
+                                                                 name="holidaySchd"
+                                                                 th:field="*{holidaySchd}"
+                                                                 class="form-control"
+                                                                 placeholder="HOLIDAY SCHEDULE:"/>
+                    </div>
+
+                    <!--remove below comment to allow udapte-->
+                    <!--                    <div class="box-footer">-->
+                    <!--                        <button type="submit" class="btn btn-primary disabled">Update</button>-->
+                    <!--                    </div>-->
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #212529;
+        color: white;
+        text-align: center;
+    }
+</style>
+<!--<div class="footer">-->
+<!--    <p>Global Data warehouse</p>-->
+<!--</div>-->
+</body>
+</html>
+============
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>CXFII Enquire screen</title>
+    <link rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+</head>
+<style>
+    body, h1, h2, h3, h4, h5, h6 {
+        font-family: "Cambria";
+    }
+</style>
+<body>
+<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+    <!-- Brand -->
+    <!--    <a class="navbar-brand" href=""><h5>CXF-II Home</h5></a>-->
+    <!--    &lt;!&ndash; Toggler/collapsibe Button &ndash;&gt;-->
+    <!--    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">-->
+    <!--        <span class="navbar-toggler-icon"></span>-->
+    <!--    </button>-->
+
+    <!-- Navbar links -->
+    <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav">
+
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfmenu}"><h5>CXF-II Home</h5></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyACT}">Enquire by SEC Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" th:href="@{/cxfbyCashACT}">Enquire by Cash Account</a>
+            </li>
+
+            <!--            <li class="nav-item">-->
+            <!--                <a class="nav-link" th:href="@{/cxf-update}">CXFII Update</a>-->
+            <!--            </li>-->
+        </ul>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <h2>&nbsp; &nbsp;Enquire details for Delivery Group and Qualifier</h2>
+    </div>
+
+    <form action="#" th:action="@{/cxfmenu}" method="post" th:object="${inputDto}">
+        <table class="table table-striped table-bordered ">
+            <thead class="table-dark">
+            <tr>
+                <th> Message Type</th>
+                <th> Format Code</th>
+                <th> Prod Code</th>
+                <th> MSG Variation</th>
+                <th> Effective Date</th>
+                <th> Expiry Date</th>
+                <th> Broker Code pres</th>
+                <th> Sec pres code</th>
+                <th> ACCT pres code</th>
+                <th> Test Ind</th>
+                <th> Event Driven</th>
+                <th> Details</th>
+                <th> More Options</th>
+                <th>Schedule</th>
+                <th>Destination</th>
+                <th>Categories</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="inputDt: ${inputDtos}">
+                <td th:text="${inputDt.msgtype}"></td>
+                <td th:text="${inputDt.formatCd}"></td>
+                <td th:text="${inputDt.prodCode}"></td>
+                <td th:text="${inputDt.variations}"></td>
+                <td th:text="${inputDt.effectiveDate}"></td>
+                <td th:text="${inputDt.expireDate} "></td>
+                <td th:text="${inputDt.brokerPresentCd}"></td>
+                <td th:text="${inputDt.secPresCd}"></td>
+                <td th:text="${inputDt.accPresCd}"></td>
+                <td th:text="${inputDt.testInd}"></td>
+                <td th:text="${inputDt.eventDriven}"></td>
+
+                <td>
+                    <a th:href="@{/cxf/update/{region}/{cr1Number}/{cd1Number}(region=${inputDto.region},cr1Number=${inputDt.cr1Number}, cd1Number=${inputDt.cd1Number})}"
+                       class="btn btn-secondary btn-sm"> View Details </a>
+                </td>
+                <td>
+                    <a th:href="@{/cxf/details/{region}/{cr1Number}/{cd1Number}(region=${inputDto.region},cr1Number=${inputDt.cr1Number}, cd1Number=${inputDt.cd1Number})}"
+                       class="btn btn-secondary btn-sm">More Options</a>
+                </td>
+                <td>
+                    <a th:href="@{/cxf/schedule/{region}/{cd1Number}/{cr1Number}(region=${inputDto.region},cr1Number=${inputDt.cr1Number}, cd1Number=${inputDt.cd1Number})}"
+                       class="btn btn-secondary btn-sm">Schedule</a>
+                </td>
+
+                <td>
+                    <a th:href="@{/cxf/destination/{region}/{cd1Number}/{cr1Number}(region=${inputDto.region},cr1Number=${inputDt.cr1Number}, cd1Number=${inputDt.cd1Number})}"
+                       class="btn btn-secondary btn-sm ">destination</a>
+                </td>
+                <td>
+                    <a th:href="@{/cxf/category/{region}/{cd1Number}/{cr1Number}(region=${inputDto.region},cr1Number=${inputDt.cr1Number}, cd1Number=${inputDt.cd1Number})}"
+                       class="btn btn-secondary btn-sm ">Categories</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+</body>
+<style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #212529;
+        color: white;
+        text-align: center;
+    }
+</style>
+<div class="footer">
+    <p>Global Data warehouse</p>
+</div>
+</html>
