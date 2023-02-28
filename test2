@@ -1,0 +1,324 @@
+tag1- 
+===
+/* rexx */
+address isredit
+"macro (argline1 argline2 noarg)"
+"(row1,row2) = display_lines"
+"(csr1,csr2) = cursor"
+"(lastline) = linenum .zl"
+"(numstate,numval) = number"
+"num off"
+upper argline1 argline2
+if argline2 = "" then argline2 = argline1
+line.1 = argline1
+line.2 = argline2
+address ispexec "CONTROL ERRORS RETURN"
+do x = 1 to 2
+   useline = 0
+   select
+      when wordpos(line.x,"END LAST HIGHSEQ 999999") > 0 then
+                  "(useline) = linenum .zl"
+      otherwise do
+         "LOCATE" line.x
+         if rc = 0 then do
+            "(newdisp1,newdisp2) = display_lines"
+            useline = newdisp1
+         end
+      end
+   end
+   asline.x = useline
+end
+return_rc = 12
+select
+   WHEN STRIP(ARGLINE1) = "" THEN SAY 'RC IS ' RETURN_RC
+   WHEN NOARG \= ""          THEN SAY 'RC IS ' RETURN_RC
+   WHEN LASTLINE = 0         THEN SAY 'RC IS ' RETURN_RC
+   WHEN ASLINE.1 = 0         THEN SAY 'RC IS ' RETURN_RC
+   WHEN ASLINE.2 = 0         THEN SAY 'RC IS ' RETURN_RC
+   WHEN ASLINE.2 < ASLINE.1  THEN SAY 'RC IS ' RETURN_RC
+   otherwise do
+       nop
+   end
+end
+"locate" row1
+"cursor = (csr1,csr2)"
+if numstate = "ON" then do
+   "NUM ON" numval
+   "RIGHT" csr2
+end
+line1 = arg(1)
+line2 = arg(2)
+if initials = "" then do
+   RC=KEYVAL("PUT","TestText")
+end
+aslabel = RXXXXXXX
+returnmsg = ""
+DO X = ARGLINE1 TO ARGLINE2
+   "(linedata) = line" x
+   linedata=overlay(aslabel,linedata,73)
+   "line" x "= (linedata)"
+end
+return 1
+
+===================
+/* REXX */
+/* To invoke fileaid from 3.4 for a particular file -                 */
+/* Author:Abubakar Siddique                                           */
+/*                                                                    */
+/*trace c*/
+arg opt dn
+call initprocess
+call allocf
+call librarydefs1
+call mainprocess
+call librarydefs2
+call freef
+exit 0
+/* initprocess */
+initprocess:
+if opt = 1 | opt = 2 | opt = 3.1 | opt = 3.2 | opt = 3.3 | opt = 3.4 |,
+   opt = 3.5 | opt = 3.6 | opt = 7 | opt = 8 | opt = 10 | opt = 3 then
+   nop
+else do
+   say 'Invalid File-Aid option entered.'
+   say 'Valid File-Aid option are fa 1/2/3/3.1/3.2/3.3/3.4/3.5/3.6/7/8/10'
+   exit 12
+end
+return
+/* allocf */
+allocf:
+/*"free fi(fallib)"*/
+/*ADDRESS TSO*/
+"alloc fi(fallib) da('SYS1.FILEAID.LOAD') shr"
+return
+/* librarydefs1 */
+librarydefs1:
+address ISPEXEC
+"ISPEXEC libdef ISPLLIB library id(fallib)"
+"libdef ISPPLIB dataset id('SYS1.FILEAID.ISPPLIB')"
+"libdef ISPMLIB dataset id('SYS1.FILEAID.ISPMLIB')"
+"libdef ISPTLIB dataset id('SYS1.FILEAID.ISPTLIB')"
+"libdef ISPSLIB dataset id('SYS1.FILEAID.ISPSLIB')"
+return
+
+/* mainprocess */
+mainprocess:
+   address ISPEXEC
+   XEINIT = 'F'
+   D2IND = 'S'
+   D4IND = 'T'
+   DMPMAP = "'VLSD.ABU.COPY.LIB'"
+   CPBKNM = "'test'"
+   "VPUT (XEINIT DMPDSN D2IND DMPMAP CPBKNM D4IND) PROFILE"
+   "VPUT (FAOPT) PROFILE"
+   "select cmd(faexec " opt " dsn("dn") quote)"
+   call librarydefs2
+return
+/* librarydefs2 */
+librarydefs2:
+address ISPEXEC
+"libdef ISPLLIB"
+"libdef ISPPLIB"
+"libdef ISPMLIB"
+"libdef ISPTLIB"
+"libdef ISPSLIB"
+return
+/* freef */
+freef:
+address TSO
+"free fi(fallib)"
+return
+/* END */
+/* dsn=VLSD.VLS.LIBRARY,displ=shr/*
+===
+/* REXX */
+/* AUTHOR: ABUBAKAR SIDDIQUE                   */
+/* THIS EDIT MACRO ALLOWS THE USER TO VIEW     */
+/* THE DATA SET LOCATED ON THE LINE THAT THE   */
+/* CURSOR IS ON.                               */
+/* TRACE ?R */
+ADDRESS ISREDIT
+"MACRO"
+ADDRESS ISPEXEC "CONTROL ERRORS RETURN"
+ADDRESS ISPEXEC "VGET ZPCFMCN PROFILE"         /* GET CONFIRM SETTING */
+IF ZPCFMCN == '/' THEN CONF = 'YES'
+  ELSE CONF = 'NO'
+  /***********************************************/
+  /*   BEGIN PROCESSING                          */
+  /***********************************************/
+  "(ROW,COL) = CURSOR"
+  "(DATA1) = LINE " ROW              /* DATA1 = CURSOR LINE          */
+  /**********************************/
+  /* FIND START OF DATA SET NAME    */
+   /**********************************/
+ DSNSTART = POS('DSN=',DATA1)
+ IF DSNSTART = 0 THEN DO
+   DSNSTART = POS('DSNAME=',DATA1)
+   IF DSNSTART = 0 THEN DO
+     "CURSOR = " ROW COL
+     IF COL < 1 THEN DSNSTART = 1
+     ELSE DSNSTART = COL
+   END
+   ELSE DSNSTART = DSNSTART + 7
+ END /* IF DSNSTART = 0 */
+ ELSE DSNSTART = DSNSTART + 4
+ /**********************************/
+ /* FIND END OF DATA SET NAME      */
+ /**********************************/
+ DSNEND = POS(',',DATA1,DSNSTART)
+ IF DSNEND = 0 THEN DO
+   DSNEND = POS(' ',DATA1,DSNSTART)
+   IF DSNEND = 0 THEN DO
+     ZEDSMSG = 'NO END OF DSN'
+     ZEDLMSG = 'THE DATA SET NAME IS NOT TERMINATED WITH A' ,
+               'SPACE OR COMMA.'
+     ADDRESS ISPEXEC "SETMSG MSG(ISRZ001)"      /* MSG - WITH ALARM */
+     "CURSOR = " ROW COL /* PUT CURSOR BACK TO LAST POSITION        */
+     EXIT 8
+   END  /* IF DSNEND = 0 */
+   ELSE DSNEND = DSNEND - 1    
+  END /* IF DSNEND = 0 */
+  ELSE DSNEND = DSNEND - 1
+  /**********************************/
+  /* VIEW THE DATA SET              */
+  /**********************************/
+  DSN = SUBSTR(DATA1,DSNSTART,DSNEND-DSNSTART+1)
+  DSN = STRIP(TRANSLATE(DSN,"","'"))
+  ADDRESS ISPEXEC "VIEW DATASET('"DSN"') CONFIRM("CONF")"
+  IF RC <> 0 THEN ADDRESS ISPEXEC "SETMSG MSG("ZERRMSG")"
+  "CURSOR = " ROW COL
+  EXIT 0   
+  ===
+    
+ VIEW       TTMMMT32.UKWH.ISPCLIB(ELE) - 01.08              Columns 00001 00072
+ =COLS> ----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+ 000001 /*******************************REXX***********************************/
+ 000002 /*||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||*/
+ 000003 /*                                                                    */
+ 000004 /*  PROCESS : THIS MACRO WILL OPEN THE MEMBER IN VIEW MODE FROM THE   */
+ 000005 /*            SPECIFIED LIBRARIES IN THE PROVIDED LIST                */
+ 000006 /*                                                                    */
+ 000007 /*  HOW TO  : TYPE "TSO GET XXXXXXXX" (MEMBERNAME)                    */
+ 000008 /*                                                                    */
+ 000009 /**********************************************************************/
+ 000010 PARSE UPPER ARG MEMBER PARM
+ 000011 IF MEMBER = '' THEN DO
+ 000012    MSG1 = "PLEASE PROVIDE THE ENTITY TO VIEW "
+ 000013    ZEDLMSG = MSG1
+ 000014    "ISPEXEC SETMSG MSG(ISRZ001)"
+ 000015    EXIT
+ 000016 END
+ 000017 /**********************************************************************/
+ 000018 /*                     MEMBER NAME VALIDATION                         */
+ 000019 /**********************************************************************/
+ 000020 /* CHECK WHETHER MEMBER NAME IS LESS THAN OR EQUAL TO 8 */
+ 000021 PARSE UPPER VAR MEMBER MEMBER
+ 000022 IF LENGTH(MEMBER) > 8 | LENGTH(MEMBER) = 0 THEN
+ 000023   DO
+ 000024     ZEDSMSG = 'MBR NAME EXCEEDS 8 CHR'
+ 000025     'ISPEXEC SETMSG MSG(ISRZ001)'
+ =COLS> ----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+ 000026     EXIT 12
+ 000027   END
+ 000028 /* CHECK WHETHER MEMBER NAME CONTAINS VALID CHARACTERS */
+ 000029 CHARS_VALID = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890@#$'
+ 000030 ERR = VERIFY(MEMBER,CHARS_VALID)
+ 000031 IF ERR \ = 0 THEN
+ 000032   DO
+ 000033     ZEDSMSG = MEMBER || ' NOT VALID MEM NAME'
+ 000034     'ISPEXEC SETMSG MSG(ISRZ001)'
+ 000035     EXIT 12
+ 000036   END
+ 000037 /* CHECK WHETHER FIRST CHARACTER OF MEMBER NAME IS NON-NUMERIC */
+ 000038 MEMBER_1 = SUBSTR(MEMBER,1,1)
+ 000039 CHARS_VALID = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$'
+ 000040 ERR = VERIFY(MEMBER_1,CHARS_VALID)
+ 000041 IF ERR \ = 0 THEN
+ 000042   DO
+ 000043     ZEDSMSG = MEMBER || ' NOT VALID MEM NAME'
+ 000044     'ISPEXEC SETMSG MSG(ISRZ001)'
+ 000045     EXIT 12
+ 000046   END
+ 000047 /**********************************************************************/
+ 000048 /*                     MEMBER NAME VALIDATION ENDS                    */
+ 000049 /**********************************************************************/
+ 000050 /*  ALWAYS SHOULD BE EQUAL TO DATASET LIST COUNT*/
+ 000051 DATASET_NUMBER = 16   
+ =COLS> ----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+ 000052 USERID = SYSVAR(SYSUID)
+ 000053
+ 000054 IF PARM = '' THEN DO
+ 000055 /********************************************************************/
+ 000056 /* TO REUSE : PLEASE CHANGE FOLLOWING DATASET NAMES TO YOUR PROJECT */
+ 000057 /* PRODUCTION OR STAG DATASET NAMES                                 */
+ 000058 /********************************************************************/
+ 000059    DATASET_LIST.1 = END$.M1STGA.JOBSTREM
+ 000060    DATASET_LIST.2 = END$.M1STG1.COPYLIB
+ 000061    DATASET_LIST.3 = END$.M1STGA.PROCLIB
+ 000062    DATASET_LIST.4 = END$.M1STGA.CNTLCARD
+ 000063    DATASET_LIST.5 = END$.M1STG2.COPYLIB
+ 000064    DATASET_LIST.6 = END$.M1STGA.COPYLIB
+ 000065    DATASET_LIST.7 = END$.M1STG2.PROCLIB
+ 000066    DATASET_LIST.8 = END$.M1STG2.CNTLCARD
+ 000067    DATASET_LIST.9 = END$.M1STG2.JOBSTREM
+ 000068    DATASET_LIST.10= END$.M1STG2.WINS.COPYLIB
+ 000069    DATASET_LIST.11= MSX#.ENDV.GIS.COBOL.A2B
+ 000070    DATASET_LIST.12= MSX#.ENDV.GIS.COBOL.C2H
+ 000071    DATASET_LIST.13= MSX#.ENDV.GIS.COBOL.I2R
+ 000072    DATASET_LIST.14= MSX#.ENDV.GIS.COBOL.S2Z
+ 000073    DATASET_LIST.15= END$.M1STGL.JOBSTREM
+ 000074    DATASET_LIST.16= END$.M1STGL.PROCLIB
+ 000075 END
+ 000076 FOUND = NO
+ 000077 RUNNING_INDEX = 1   
+ =COLS> ----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+ 000078 DO WHILE RUNNING_INDEX <= DATASET_NUMBER
+ 000079 /*  ALWAYS SHOULD BE 1 GREATER THAN DATASET LIST COUNT */
+ 000080    IF RUNNING_INDEX > 16 THEN
+ 000081    DO
+ 000082     EXIT12
+ 000083    END
+ 000084    DSNAME = DATASET_LIST.RUNNING_INDEX || '(' || MEMBER || ')'
+ 000085    ERR_CHECK = SYSDSN("'"DSNAME"'")
+ 000086    IF ERR_CHECK = 'OK' THEN DO
+ 000087       FOUND = YES
+ 000088       'ISPEXEC VIEW DATASET('''DSNAME''')'
+ 000089       IF RC > 4 THEN DO
+ 000090       SELECT
+ 000091         WHEN RC = 14 THEN DO
+ 000092           ZEDSMSG = 'INVALID DSORG'
+ 000093           ZEDLMSG = 'ISPF BROWSE IS INVALID FOR VSAM FILES! '
+ 000094         END
+ 000095         WHEN RC = 20 THEN DO
+ 000096           ZEDSMSG = 'INVALID DSORG'
+ 000097           ZEDLMSG = 'BROWSE IS INVALID FOR LOAD LIBRARIES! '
+ 000098         END
+ 000099       OTHERWISE DO
+ 000100           ZEDSMSG = 'EDIT ERROR, PRESS PF1'
+ 000101           ZEDLMSG = 'RETURN CODE FROM EDIT SERVICE IS' RC
+ 000102         END
+ 000103       END
+ =COLS> ----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+ 000104       'ISPEXEC SETMSG MSG(ISRZ001)'
+ 000105      END
+ 000106    END
+ 000107    RUNNING_INDEX = RUNNING_INDEX + 1
+ 000108 END
+ 000109
+ 000110 /********************************************************************/
+ 000111 /* TO REUSE : GIVE YOUR CUSTOMIZED MESSAGES WHEN DATASET IS NOT FND */
+ 000112 /* IN DEVELOPMENT OR PROD OR STAG DIRECTORIES                       */
+ 000113 /********************************************************************/
+ 000114 IF FOUND = 'NO' THEN DO
+ 000115    IF PARM = 'Q' | PARM = 'Q' THEN DO
+ 000116       MSG2 = "         NOT FOUND IN ANY QA DIRECTORIES"
+ 000117    END
+ 000118    ELSE DO
+ 000119       MSG2 = "   ENTRY NOT FOUND IN ANY PRODUCTION DIRECTORIES"
+ 000120    END
+ 000121        ZEDLMSG = MSG2
+ 000122        "ISPEXEC SETMSG MSG(ISRZ001)"
+ 000123 END
+ ****** **************************** Bottom of Data ****************************
+   =====
+   
